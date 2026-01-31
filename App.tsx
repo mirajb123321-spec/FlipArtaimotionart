@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { AspectRatio, GeneratedImage, GenerationSettings } from './types';
 import { generateImage } from './services/geminiService';
@@ -96,7 +96,15 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    } catch (e) {
+      console.warn("LocalStorage quota exceeded, clearing old history.");
+      // If quota is full, keep only the last 5 images
+      if (history.length > 5) {
+        setHistory(prev => prev.slice(0, 5));
+      }
+    }
   }, [history]);
 
   const handleGenerate = async (e?: React.FormEvent) => {
@@ -193,9 +201,6 @@ const App: React.FC = () => {
       const base64Data = await fileBase64Promise;
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
-      // We use the AI to analyze the voice and provide a transcription/feedback
-      // In a real production app, we would use specialized audio processing pipelines
-      // for full 1-click noise removal, but here we demonstrate the AI's hearing capability
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: [
@@ -215,7 +220,7 @@ const App: React.FC = () => {
       
       setAudioResult({
         original: URL.createObjectURL(audioFile),
-        enhanced: URL.createObjectURL(audioFile), // Mock enhanced URL for UI demonstration
+        enhanced: URL.createObjectURL(audioFile), 
         transcription: textResult
       });
     } catch (err: any) {
@@ -268,18 +273,18 @@ const App: React.FC = () => {
                 <input 
                   type="text" required placeholder="Full Name" value={authData.name}
                   onChange={e => setAuthData({...authData, name: e.target.value})}
-                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/50"
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none"
                 />
               )}
               <input 
                 type="email" required placeholder="Email" value={authData.email}
                 onChange={e => setAuthData({...authData, email: e.target.value})}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/50"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none"
               />
               <input 
                 type="password" required placeholder="Password" value={authData.password}
                 onChange={e => setAuthData({...authData, password: e.target.value})}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/50"
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none"
               />
               <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all">
                 {authMode === 'login' ? 'Sign In' : 'Create Account'}
@@ -287,7 +292,7 @@ const App: React.FC = () => {
             </form>
             <p className="mt-6 text-center text-sm text-slate-500">
               {authMode === 'login' ? "Don't have an account?" : "Already have account?"}
-              <button onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} className="ml-2 text-indigo-400 font-semibold">
+              <button onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} className="ml-2 text-indigo-400 font-semibold hover:text-indigo-300 transition-colors">
                 {authMode === 'login' ? 'Sign Up' : 'Log In'}
               </button>
             </p>
@@ -351,12 +356,10 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 py-8 md:py-12 w-full flex-grow flex flex-col">
         {activeTab === 'generator' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Generator Header */}
             <section className="text-center mb-16 max-w-3xl mx-auto">
               <h1 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight">
                 AI Powered <span className="gradient-text">Art Studio</span>
               </h1>
-              
               <form onSubmit={handleGenerate} className="mt-8">
                 <div className="relative group">
                   <div className="p-1 rounded-3xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-500 group-focus-within:shadow-[0_0_30px_rgba(99,102,241,0.3)]">
@@ -366,7 +369,7 @@ const App: React.FC = () => {
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
                         placeholder="Describe your vision... e.g., 'Portrait of a cyber-samurai in rain'"
-                        className="flex-1 bg-transparent border-none focus:ring-0 text-lg px-4 py-4"
+                        className="flex-1 bg-transparent border-none focus:ring-0 text-lg px-4 py-4 text-white outline-none"
                         disabled={isGenerating}
                       />
                       <button
@@ -380,7 +383,6 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
                 <div className="mt-6 flex flex-wrap justify-center gap-3">
                   {ASPECT_RATIOS.map((ratio) => (
                     <button
@@ -399,8 +401,6 @@ const App: React.FC = () => {
                 </div>
               </form>
             </section>
-
-            {/* Error & Loader */}
             {error && <div className="max-w-xl mx-auto mb-8 bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-center">{error}</div>}
             {isGenerating && (
               <div className="max-w-2xl mx-auto mb-16 animate-pulse">
@@ -409,8 +409,6 @@ const App: React.FC = () => {
                 </div>
               </div>
             )}
-
-            {/* History Grid */}
             <section id="history">
               <div className="flex items-center gap-2 mb-8 text-xl font-bold">
                 <HistoryIcon className="text-indigo-400" />
@@ -446,103 +444,42 @@ const App: React.FC = () => {
               <h1 className="text-4xl font-extrabold mb-4">Audio <span className="gradient-text">Studio</span></h1>
               <p className="text-slate-400">AI-Powered Noise Removal and Voice Enhancement.</p>
             </section>
-
             <div className="glass-panel rounded-3xl p-8 border border-white/10 flex flex-col items-center gap-6">
-              <input 
-                type="file" 
-                accept="audio/*" 
-                className="hidden" 
-                ref={audioInputRef} 
-                onChange={onAudioFileChange}
-              />
-              
+              <input type="file" accept="audio/*" className="hidden" ref={audioInputRef} onChange={onAudioFileChange} />
               {!audioFile ? (
-                <button 
-                  onClick={() => audioInputRef.current?.click()}
-                  className="w-full max-w-md aspect-video border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-4 hover:border-indigo-500/50 transition-all group"
-                >
-                  <div className="w-16 h-16 rounded-full bg-indigo-600/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <MicIcon className="w-8 h-8 text-indigo-400" />
-                  </div>
-                  <div className="text-center">
-                    <p className="font-bold">Click to Upload Audio</p>
-                    <p className="text-xs text-slate-500 mt-1">WAV, MP3, M4A up to 25MB</p>
-                  </div>
+                <button onClick={() => audioInputRef.current?.click()} className="w-full max-w-md aspect-video border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-4 hover:border-indigo-500/50 transition-all group">
+                  <div className="w-16 h-16 rounded-full bg-indigo-600/10 flex items-center justify-center group-hover:scale-110 transition-transform"><MicIcon className="w-8 h-8 text-indigo-400" /></div>
+                  <div className="text-center"><p className="font-bold">Click to Upload Audio</p><p className="text-xs text-slate-500 mt-1">WAV, MP3, M4A up to 25MB</p></div>
                 </button>
               ) : (
                 <div className="w-full space-y-6">
                   <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-2xl border border-white/5">
-                    <div className="flex items-center gap-4">
-                      <MusicIcon className="text-indigo-400 w-6 h-6" />
-                      <div className="overflow-hidden">
-                        <p className="text-sm font-bold truncate max-w-[200px]">{audioFile.name}</p>
-                        <p className="text-xs text-slate-500">{(audioFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => setAudioFile(null)}
-                      className="text-slate-500 hover:text-red-400"
-                    >
-                      <XIcon className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-4"><MusicIcon className="text-indigo-400 w-6 h-6" /><div className="overflow-hidden"><p className="text-sm font-bold truncate max-w-[200px]">{audioFile.name}</p><p className="text-xs text-slate-500">{(audioFile.size / 1024 / 1024).toFixed(2)} MB</p></div></div>
+                    <button onClick={() => setAudioFile(null)} className="text-slate-500 hover:text-red-400 transition-colors"><XIcon className="w-5 h-5" /></button>
                   </div>
-
                   <div className="flex justify-center">
-                    <button 
-                      onClick={handleAudioEnhance}
-                      disabled={isAudioProcessing}
-                      className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-4 px-12 rounded-2xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-3"
-                    >
+                    <button onClick={handleAudioEnhance} disabled={isAudioProcessing} className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-4 px-12 rounded-2xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-3">
                       {isAudioProcessing ? <LoaderIcon className="w-6 h-6" /> : <SparklesIcon className="w-6 h-6" />}
                       {isAudioProcessing ? 'Processing Audio...' : 'Enhance Voice & Remove Noise'}
                     </button>
                   </div>
                 </div>
               )}
-
-              {isAudioProcessing && (
-                <div className="w-full space-y-4">
-                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-500 w-1/3 animate-shimmer" style={{ backgroundSize: '200% 100%', backgroundImage: 'linear-gradient(90deg, #6366f1 25%, #8b5cf6 50%, #6366f1 75%)' }}></div>
-                  </div>
-                  <p className="text-center text-xs text-indigo-400 font-bold animate-pulse">AI is cleaning the frequencies...</p>
-                </div>
-              )}
-
               {audioResult && (
                 <div className="w-full space-y-6 animate-in fade-in slide-in-from-top-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-slate-900/80 p-6 rounded-2xl border border-white/5">
-                      <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
-                        <span className="w-2 h-2 bg-slate-500 rounded-full"></span>
-                        Original Recording
-                      </h3>
+                      <h3 className="text-sm font-bold mb-4 flex items-center gap-2"><span className="w-2 h-2 bg-slate-500 rounded-full"></span>Original Recording</h3>
                       <audio controls src={audioResult.original} className="w-full h-10" />
                     </div>
                     <div className="bg-indigo-600/5 p-6 rounded-2xl border border-indigo-500/20">
-                      <h3 className="text-sm font-bold mb-4 flex items-center gap-2 text-indigo-400">
-                        <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></span>
-                        AI Enhanced Voice
-                      </h3>
+                      <h3 className="text-sm font-bold mb-4 flex items-center gap-2 text-indigo-400"><span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></span>AI Enhanced Voice</h3>
                       <audio controls src={audioResult.enhanced} className="w-full h-10" />
                     </div>
                   </div>
-
                   <div className="bg-slate-900/50 p-6 rounded-2xl border border-white/5">
-                    <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
-                      <BrainIcon className="w-4 h-4 text-indigo-400" />
-                      AI Analysis & Transcription
-                    </h3>
-                    <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
-                      {audioResult.transcription}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-4">
-                    <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors text-sm font-bold">
-                      <DownloadIcon className="w-4 h-4" />
-                      Download Enhanced
-                    </button>
+                    <h3 className="text-sm font-bold mb-4 flex items-center gap-2"><BrainIcon className="w-4 h-4 text-indigo-400" />AI Analysis & Transcription</h3>
+                    <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{audioResult.transcription}</div>
                   </div>
                 </div>
               )}
@@ -551,125 +488,60 @@ const App: React.FC = () => {
         )}
 
         {activeTab === 'assistant' && (
-          /* AI Assistant Mode */
           <div className="flex-grow flex flex-col md:flex-row gap-6 h-[70vh] animate-in slide-in-from-right-4 duration-500">
-            {/* Sidebar Gallery for Context */}
             <div className="hidden lg:flex flex-col w-64 glass-panel rounded-3xl border border-white/5 overflow-hidden">
               <div className="p-4 border-b border-white/5 font-bold text-sm text-slate-400">Context Gallery</div>
               <div className="flex-grow overflow-y-auto p-4 space-y-4">
                 {history.map(img => (
-                  <button 
-                    key={img.id} 
-                    onClick={() => setAttachedImage(img)}
-                    className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-all ${attachedImage?.id === img.id ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-transparent hover:border-white/20'}`}
-                  >
-                    <img src={img.url} className="w-full h-full object-cover" />
-                  </button>
+                  <button key={img.id} onClick={() => setAttachedImage(img)} className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-all ${attachedImage?.id === img.id ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-transparent hover:border-white/20'}`}><img src={img.url} className="w-full h-full object-cover" /></button>
                 ))}
               </div>
             </div>
-
-            {/* Main Chat Interface */}
             <div className="flex-grow flex flex-col glass-panel rounded-3xl border border-white/5 overflow-hidden shadow-2xl relative">
               <div className="bg-slate-900/80 p-6 border-b border-white/5 flex items-center justify-between backdrop-blur-xl">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
-                    <BrainIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold">AI Assistant</h2>
-                    <p className="text-xs text-indigo-400 font-medium">Expert in Art & Prompts</p>
-                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center"><BrainIcon className="w-6 h-6 text-white" /></div>
+                  <div><h2 className="font-bold">AI Assistant</h2><p className="text-xs text-indigo-400 font-medium">Expert in Art & Prompts</p></div>
                 </div>
-                <button onClick={() => setChatMessages([])} className="text-xs text-slate-500 hover:text-white">Clear History</button>
+                <button onClick={() => setChatMessages([])} className="text-xs text-slate-500 hover:text-white transition-colors">Clear History</button>
               </div>
-
               <div className="flex-grow overflow-y-auto p-6 space-y-6 scrollbar-hide">
                 {chatMessages.map((msg, i) => (
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-300`}>
                     <div className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center ${msg.role === 'user' ? 'bg-slate-800' : 'bg-indigo-600/20 border border-indigo-500/30'}`}>
-                        {msg.role === 'user' ? <UserIcon className="w-4 h-4" /> : <BrainIcon className="w-4 h-4 text-indigo-400" />}
-                      </div>
+                      <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center ${msg.role === 'user' ? 'bg-slate-800' : 'bg-indigo-600/20 border border-indigo-500/30'}`}>{msg.role === 'user' ? <UserIcon className="w-4 h-4" /> : <BrainIcon className="w-4 h-4 text-indigo-400" />}</div>
                       <div className="space-y-2">
-                        {msg.image && (
-                          <div className="w-48 rounded-xl overflow-hidden border border-white/10 shadow-lg">
-                            <img src={msg.image} className="w-full h-auto" />
-                          </div>
-                        )}
-                        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-900 border border-white/5 text-slate-200 shadow-inner'}`}>
-                          {msg.text}
-                        </div>
+                        {msg.image && <div className="w-48 rounded-xl overflow-hidden border border-white/10 shadow-lg"><img src={msg.image} className="w-full h-auto" /></div>}
+                        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-900 border border-white/5 text-slate-200 shadow-inner'}`}>{msg.text}</div>
                       </div>
                     </div>
                   </div>
                 ))}
-                {isChatting && (
-                  <div className="flex justify-start animate-pulse">
-                    <div className="flex gap-3 items-center bg-slate-900/50 px-4 py-3 rounded-2xl border border-white/5">
-                      <LoaderIcon className="w-4 h-4 text-indigo-500" />
-                      <span className="text-xs text-slate-400">Analyzing...</span>
-                    </div>
-                  </div>
-                )}
+                {isChatting && <div className="flex justify-start animate-pulse"><div className="flex gap-3 items-center bg-slate-900/50 px-4 py-3 rounded-2xl border border-white/5"><LoaderIcon className="w-4 h-4 text-indigo-500" /><span className="text-xs text-slate-400">Analyzing...</span></div></div>}
                 <div ref={chatEndRef} />
               </div>
-
-              {/* Chat Input Area */}
               <div className="p-4 bg-slate-900/50 border-t border-white/5 backdrop-blur-xl">
                 {attachedImage && (
                   <div className="mb-4 flex items-center gap-3 animate-in slide-in-from-bottom-2">
-                    <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-indigo-500 ring-2 ring-indigo-500/20">
-                      <img src={attachedImage.url} className="w-full h-full object-cover" />
-                      <button 
-                        onClick={() => setAttachedImage(null)}
-                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
-                      >
-                        <XIcon className="w-3 h-3" />
-                      </button>
-                    </div>
+                    <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-indigo-500 ring-2 ring-indigo-500/20"><img src={attachedImage.url} className="w-full h-full object-cover" /><button onClick={() => setAttachedImage(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><XIcon className="w-3 h-3" /></button></div>
                     <span className="text-xs text-indigo-400 font-bold uppercase tracking-wider">Image Attached</span>
                   </div>
                 )}
                 <form onSubmit={handleSendMessage} className="relative flex gap-2">
                   <div className="flex-grow relative">
-                    <input 
-                      type="text" 
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      placeholder={user ? "Ask me to help refine a prompt or analyze an image..." : "Sign in to use Assistant"}
-                      className="w-full bg-slate-950 border border-white/10 rounded-2xl py-4 pl-6 pr-12 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600"
-                      disabled={isChatting}
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => setActiveTab('generator')}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-600 hover:text-indigo-400 transition-colors"
-                      title="Browse Images"
-                    >
-                      <PaperclipIcon className="w-5 h-5" />
-                    </button>
+                    <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder={user ? "Ask me to help refine a prompt or analyze an image..." : "Sign in to use Assistant"} className="w-full bg-slate-950 border border-white/10 rounded-2xl py-4 pl-6 pr-12 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 text-white" disabled={isChatting} />
+                    <button type="button" onClick={() => setActiveTab('generator')} className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-600 hover:text-indigo-400 transition-colors" title="Browse Images"><PaperclipIcon className="w-5 h-5" /></button>
                   </div>
-                  <button 
-                    type="submit"
-                    disabled={isChatting || (!chatInput.trim() && !attachedImage)}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white p-4 rounded-2xl disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
-                  >
-                    <SendIcon className="w-5 h-5" />
-                  </button>
+                  <button type="submit" disabled={isChatting || (!chatInput.trim() && !attachedImage)} className="bg-indigo-600 hover:bg-indigo-500 text-white p-4 rounded-2xl disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"><SendIcon className="w-5 h-5" /></button>
                 </form>
               </div>
             </div>
           </div>
         )}
       </main>
-
       <footer className="border-t border-white/5 py-8 px-4 bg-slate-900/20">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-sm">
-           <div className="flex items-center gap-2">
-            <SparklesIcon className="w-4 h-4 text-indigo-500" />
-            <span className="font-bold text-slate-400 tracking-widest uppercase text-[10px]">FlipArt Pro v2.5</span>
-          </div>
+           <div className="flex items-center gap-2"><SparklesIcon className="w-4 h-4 text-indigo-500" /><span className="font-bold text-slate-400 tracking-widest uppercase text-[10px]">FlipArt Studio v2.6</span></div>
           <p>&copy; 2025 Creative Intelligence Lab</p>
         </div>
       </footer>
